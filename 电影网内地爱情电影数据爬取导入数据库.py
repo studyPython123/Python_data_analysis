@@ -1,5 +1,5 @@
 # Author: 邵世昌
-# CreateTime: 2024/11/22
+# CreateTime: 2024/2/22
 # FileName: 电影网内地爱情电影数据爬取导入数据库
 import mysql.connector
 import pandas as pd
