@@ -1,0 +1,12 @@
+-- char_length
+select char_length('hello');
+select char_length('你好吗');
+-- length(按照字节求长度)
+select length('hello');
+select length('你好吗');
+-- concat
+select concat('邵','世','昌');
+-- concat_ws
+select concat_ws('-','邵','世','昌');
+-- 返回字符串在列表中的位置
+select field('a','a','b','c','d');

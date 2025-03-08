@@ -1,0 +1,5 @@
+-- 数值类型
+-- tinyint ,int,float,double
+-- unsigned（无符号）
+-- 字符串类型（char,varchar）
+-- 时间类型（date,time,datetime,timestamp）
