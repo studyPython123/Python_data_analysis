@@ -121,4 +121,21 @@ print(result)
 ```
 ![image](https://github.com/user-attachments/assets/ca16d44a-5f94-456d-98fa-81de0651f858)
 
+## 3.3 Cohen's d检验
+Cohen's d 是一种用于衡量两个样本均值差异大小的效应量指标，由美国统计学家雅各布・科恩（Jacob Cohen）提出。
 
+![image](https://github.com/user-attachments/assets/f06f37dc-ce9e-4660-ab91-fba27bf5722d)
+
+```python
+std_old = data[data.landing_page=="old_page"].converted.std()
+std_new = data[data.landing_page=="new_page"].converted.std()
+s = np.sqrt(((control_number - 1)* std_old**2 + (treatment_number - 1)* std_new**2 ) /
+            (control_number + treatment_number - 2))
+d = (p_old - p_new) / s # 效应量Cohen's d
+print('Cohen\'s d为：', d)
+```
+
+![image](https://github.com/user-attachments/assets/888e0a76-a379-4ec4-88c2-c933094c9203)
+
+# 四、结论
+通过上述分析可知，新旧版本网页在显著性水平5%时统计意义上的存在显著差异，但差异的效应量很小。即意味着新版网页优于旧版网页，应当采用新版本的网页。
