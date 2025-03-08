@@ -77,7 +77,48 @@ for i in id_repeat:
       indices_to_drop = data[data['user_id'] == i].index
       data.drop(indices_to_drop, inplace=True)
 ```
-通过对实验对象ID进行筛查，发现有3894个实验对象有重复记录，由于不能确定这些实验对象是多次浏览同一个版本的页面还是浏览了不同页面的版本，因此不能断然选择删除重复数据，这会导致有效数据被删除，所以需要进行判断，由结果可知有1998个实验对象同时浏览了两种版本的网页，无法排除这些实验对象是否受到了两种版本网页的影响，因此选择将这些数据删除，此时剩余290482条数据。
+通过对实验对象ID进行筛查，发现有3894个实验对象有重复记录，由于不能确定这些实验对象是多次浏览同一个版本的页面还是浏览了不同页面的版本，因此不能断然选择删除重复数据，这会导致有效数据被删除，所以需要进行判断，由结果可知有1998个实验对象同时浏览了两种版本的网页，无法排除这些实验对象是否受到了两种版本网页的影响，因此选择将这些数据删除，而其他实验对象的重复数据只需留下一条即可，处理完重复数据后再次进行检查，确保不存在重复数据。
 
 ![image](https://github.com/user-attachments/assets/a44958cb-04f6-4aad-9359-ffb3d7a872c2)
+
+```python
+user = data['user_id']
+print(user.duplicated().sum()) # 1896个实验者存在重复数据
+user_repeat = user[user.duplicated()] # 提取有重复记录的实验者ID
+for i in user_repeat.values.tolist():
+      indices_to_drop = data[data['user_id'] == i].index[0]
+      data.drop(indices_to_drop, inplace=True)
+user = data['user_id']
+print(user.duplicated().sum())
+```
+## 2.6 A/B组流量对比
+为了更好的进行对比，检查两组的流量对比，实验组总人数：144319, 对照组总人数：144267，两组流量分配相对均衡。
+```python
+treatment_number = len(data[data['group'] == 'treatment'])
+control_number = len(data[data['group'] == 'control'])
+print(f'实验组总人数：{treatment_number}, 对照组总人数：{control_number}')
+```
+# 三、假设检验
+## 3.1 建立假设
+记旧网页的转化率为 p1，新网页的转化率为 p2，原假设 ： p1<p2 ，备择假设 ：p1>=p2，显著性水平α=0.05，采用单侧假设检验。
+## 3.2 得出结论
+计算检验统计量，与显著性水平α=0.05下的临界值进行对比，得到接受原假设的结论。
+```python
+convert_old = data.query('group=="control" & converted==1').shape[0]
+convert_new = data.query('group=="treatment" & converted==1').shape[0]
+p_old = convert_old / control_number
+p_new = convert_new / treatment_number
+p_c = (convert_old + convert_new)/(control_number + treatment_number)
+z = (p_old - p_new)/ np.sqrt(p_c*(1 - p_c)*( 1/control_number + 1/treatment_number))  #  检验统计量
+z_alpha = norm.ppf(0.05)
+print('旧版总受试用户数:', control_number, '旧版转化用户数:', convert_old, '旧版转化率:', p_old)
+print('新版总受试用户数:', treatment_number, '新版转化用户数:', convert_new, '新版转化率:', p_new)
+print('转化率的联合估计:', p_c)
+print('检验统计量z:', z)
+print(z_alpha)
+result = "落入拒绝域，拒绝原假设" if  z  > z_alpha else "接受原假设"
+print(result)
+```
+![image](https://github.com/user-attachments/assets/ca16d44a-5f94-456d-98fa-81de0651f858)
+
 
