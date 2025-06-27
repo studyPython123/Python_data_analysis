@@ -40,7 +40,7 @@ def set_bg_image(url):
     st.markdown(page_bg_img, unsafe_allow_html=True)
 
 # 使用示例图片URL，实际使用时替换为你的图片URL
-# set_bg_image("https://img.picui.cn/free/2025/06/25/685bc513d6d52.jpeg")
+# set_bg_image("")
 
 # 存储配置
 STORAGE_DIR = ".streamlit_auth"
