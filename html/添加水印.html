@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高级水印添加工具</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Pacifico&family=Shadows+Into+Light&display=swap');
+
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2980b9;
+            --background-color: #f5f7fa;
+            --panel-color: #ffffff;
+            --text-color: #333333;
+            --border-color: #e0e0e0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+        }
+
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .export-bar {
+            background-color: var(--panel-color);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .export-bar button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+
+        .export-bar button:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .export-bar input[type="text"] {
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            flex-grow: 1;
+            min-width: 200px;
+        }
+
+        .main-content {
+            display: flex;
+            gap: 20px;
+        }
+
+        .settings-panel {
+            flex: 1;
+            background-color: var(--panel-color);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            max-width: 350px;
+        }
+
+        .preview-panel {
+            flex: 2;
+            background-color: var(--panel-color);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 500px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        input[type="color"] {
+            width: 50px;
+            height: 30px;
+            padding: 2px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+        }
+
+        .color-input {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+        }
+
+        .template-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .template-actions button {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .save-template {
+            background-color: #2ecc71;
+            color: white;
+        }
+
+        .load-template {
+            background-color: #f39c12;
+            color: white;
+        }
+
+        .delete-template {
+            background-color: #e74c3c;
+            color: white;
+        }
+
+        .preview-container {
+            position: relative;
+            max-width: 100%;
+            margin-bottom: 20px;
+        }
+
+        #previewImage {
+            max-width: 100%;
+            max-height: 400px;
+            display: block;
+            border: 1px dashed var(--border-color);
+        }
+
+        .watermark-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        .font-preview {
+            margin-top: 5px;
+            padding: 5px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            min-height: 30px;
+        }
+
+        .art-font {
+            font-family: 'Dancing Script', cursive;
+        }
+
+        .art-font-2 {
+            font-family: 'Pacifico', cursive;
+        }
+
+        .art-font-3 {
+            font-family: 'Shadows Into Light', cursive;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tab {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab.active {
+            border-bottom: 3px solid var(--primary-color);
+            font-weight: bold;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .image-info {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+
+            .settings-panel {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>高级水印添加工具</h1>
+
+        <div class="app-container">
+            <div class="export-bar">
+                <input type="text" id="exportFilename" placeholder="输入导出文件名（不含扩展名）" value="watermarked-image">
+                <button id="exportBtn">导出图片</button>
+                <button id="saveTemplateBtn">保存模板</button>
+                <select id="templateSelect">
+                    <option value="">选择模板...</option>
+                </select>
+            </div>
+
+            <div class="main-content">
+                <div class="settings-panel">
+                    <div class="tabs">
+                        <div class="tab active" data-tab="basic">基本设置</div>
+                        <div class="tab" data-tab="advanced">高级设置</div>
+                        <div class="tab" data-tab="template">模板管理</div>
+                    </div>
+
+                    <div class="tab-content active" id="basic-tab">
+                        <div class="form-group">
+                            <label for="imageInput">选择图片</label>
+                            <input type="file" id="imageInput" accept="image/*">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="watermarkText">水印文字</label>
+                            <input type="text" id="watermarkText" placeholder="输入水印文字" value="示例水印">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="fontFamily">字体</label>
+                            <select id="fontFamily">
+                                <option value="Arial, sans-serif">Arial</option>
+                                <option value="'Times New Roman', serif">Times New Roman</option>
+                                <option value="'Courier New', monospace">Courier New</option>
+                                <option value="'Dancing Script', cursive" class="art-font">Dancing Script (艺术字体)</option>
+                                <option value="'Pacifico', cursive" class="art-font-2">Pacifico (艺术字体)</option>
+                                <option value="'Shadows Into Light', cursive" class="art-font-3">Shadows Into Light (艺术字体)</option>
+                            </select>
+                            <div id="fontPreview" class="font-preview">字体预览效果</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="fontSize">字体大小 (px)</label>
+                            <input type="number" id="fontSize" min="8" max="72" value="24">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="watermarkColor">水印颜色</label>
+                            <div class="color-input">
+                                <input type="color" id="watermarkColor" value="#000000">
+                                <input type="text" id="watermarkColorText" value="#000000">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="opacity">透明度 (0-1)</label>
+                            <input type="number" id="opacity" min="0" max="1" step="0.1" value="0.5">
+                        </div>
+                    </div>
+
+                    <div class="tab-content" id="advanced-tab">
+                        <div class="form-group">
+                            <label for="rotationAngle">旋转角度 (度)</label>
+                            <input type="number" id="rotationAngle" min="-180" max="180" value="30">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="watermarkPosition">水印位置</label>
+                            <select id="watermarkPosition">
+                                <option value="center">居中</option>
+                                <option value="top-left">左上</option>
+                                <option value="top-right">右上</option>
+                                <option value="bottom-left">左下</option>
+                                <option value="bottom-right">右下</option>
+                                <option value="repeat">重复铺满</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="watermarkSpacing">水印间距 (px, 仅重复模式)</label>
+                            <input type="number" id="watermarkSpacing" min="0" value="100">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="horizontalOffset">水平偏移量 (px)</label>
+                            <input type="number" id="horizontalOffset" value="0">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="verticalOffset">垂直偏移量 (px)</label>
+                            <input type="number" id="verticalOffset" value="0">
+                        </div>
+
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="addTimestamp">
+                            <label for="addTimestamp">添加时间戳</label>
+                        </div>
+
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="addLocation">
+                            <label for="addLocation">添加位置信息</label>
+                        </div>
+
+                        <div class="form-group" id="customFormatGroup">
+                            <label for="customFormat">自定义格式</label>
+                            <textarea id="customFormat" rows="3" placeholder="例如: {text} - {time} - {location}"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="tab-content" id="template-tab">
+                        <div class="form-group">
+                            <label for="templateName">模板名称</label>
+                            <input type="text" id="templateName" placeholder="输入模板名称">
+                        </div>
+
+                        <div class="template-actions">
+                            <button id="saveTemplateBtn2" class="save-template">保存模板</button>
+                            <button id="loadTemplateBtn" class="load-template">加载模板</button>
+                            <button id="deleteTemplateBtn" class="delete-template">删除模板</button>
+                        </div>
+
+                        <div class="form-group">
+                            <label>已保存模板</label>
+                            <div id="templatesList"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="preview-panel">
+                    <h3>预览</h3>
+                    <div class="preview-container">
+                        <img id="previewImage" src="data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23f0f0f0'/%3E%3Ctext x='200' y='150' font-family='Arial' font-size='16' text-anchor='middle' fill='%23999999'%3E请选择图片预览效果%3C/text%3E%3C/svg%3E" alt="预览图片">
+                        <canvas id="watermarkCanvas" class="watermark-canvas"></canvas>
+                    </div>
+                    <div class="image-info" id="imagePixelInfo"></div>
+                    <div id="locationInfo" style="margin-top: 10px; font-style: italic;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM 元素
+            const imageInput = document.getElementById('imageInput');
+            const previewImage = document.getElementById('previewImage');
+            const watermarkCanvas = document.getElementById('watermarkCanvas');
+            const watermarkText = document.getElementById('watermarkText');
+            const fontFamily = document.getElementById('fontFamily');
+            const fontSize = document.getElementById('fontSize');
+            const watermarkColor = document.getElementById('watermarkColor');
+            const watermarkColorText = document.getElementById('watermarkColorText');
+            const opacity = document.getElementById('opacity');
+            const rotationAngle = document.getElementById('rotationAngle');
+            const watermarkPosition = document.getElementById('watermarkPosition');
+            const watermarkSpacing = document.getElementById('watermarkSpacing');
+            const addTimestamp = document.getElementById('addTimestamp');
+            const addLocation = document.getElementById('addLocation');
+            const customFormat = document.getElementById('customFormat');
+            const exportBtn = document.getElementById('exportBtn');
+            const exportFilename = document.getElementById('exportFilename');
+            const templateSelect = document.getElementById('templateSelect');
+            const saveTemplateBtn = document.getElementById('saveTemplateBtn');
+            const saveTemplateBtn2 = document.getElementById('saveTemplateBtn2');
+            const loadTemplateBtn = document.getElementById('loadTemplateBtn');
+            const deleteTemplateBtn = document.getElementById('deleteTemplateBtn');
+            const templateName = document.getElementById('templateName');
+            const templatesList = document.getElementById('templatesList');
+            const fontPreview = document.getElementById('fontPreview');
+            const locationInfo = document.getElementById('locationInfo');
+            const horizontalOffset = document.getElementById('horizontalOffset');
+            const verticalOffset = document.getElementById('verticalOffset');
+            const imagePixelInfo = document.getElementById('imagePixelInfo');
+
+            // 存储原始图片尺寸
+            let originalImageWidth = 0;
+            let originalImageHeight = 0;
+
+            // 标签切换
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // 移除所有active类
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+                    // 添加active类到当前标签和对应内容
+                    this.classList.add('active');
+                    const tabId = this.getAttribute('data-tab');
+                    document.getElementById(`${tabId}-tab`).classList.add('active');
+                });
+            });
+
+            // 颜色选择器同步
+            watermarkColor.addEventListener('input', function() {
+                watermarkColorText.value = this.value;
+                updatePreview();
+            });
+
+            watermarkColorText.addEventListener('input', function() {
+                if (/^#[0-9A-F]{6}$/i.test(this.value)) {
+                    watermarkColor.value = this.value;
+                    updatePreview();
+                }
+            });
+
+            // 字体预览
+            fontFamily.addEventListener('change', function() {
+                fontPreview.style.fontFamily = this.value;
+                updatePreview();
+            });
+
+            // 图片加载
+            imageInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        // 创建临时图片对象获取原始尺寸
+                        const tempImg = new Image();
+                        tempImg.onload = function() {
+                            originalImageWidth = tempImg.width;
+                            originalImageHeight = tempImg.height;
+
+                            // 显示图片像素信息
+                            imagePixelInfo.textContent = `图片尺寸: ${originalImageWidth} × ${originalImageHeight} 像素`;
+
+                            // 设置预览图片
+                            previewImage.src = event.target.result;
+                            updatePreview();
+                            getLocation();
+                        };
+                        tempImg.src = event.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    // 重置像素信息
+                    imagePixelInfo.textContent = '';
+                }
+            });
+
+            // 获取地理位置
+            function getLocation() {
+                if (addLocation.checked && navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        function(position) {
+                            const latitude = position.coords.latitude;
+                            const longitude = position.coords.longitude;
+                            locationInfo.textContent = `位置: 纬度 ${latitude.toFixed(4)}, 经度 ${longitude.toFixed(4)}`;
+                            updatePreview();
+                        },
+                        function(error) {
+                            locationInfo.textContent = "无法获取位置信息: " + error.message;
+                        }
+                    );
+                } else {
+                    locationInfo.textContent = "";
+                }
+            }
+
+            // 绘制水印函数
+            function drawWatermark(ctx, text, width, height, options) {
+                // 设置水印样式
+                ctx.font = `${options.fontSize}px ${options.fontFamily}`;
+                ctx.fillStyle = options.watermarkColor;
+                ctx.globalAlpha = options.opacity;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                // 计算文本宽度和高度
+                const textMetrics = ctx.measureText(text);
+                const textWidth = textMetrics.width;
+                const textHeight = parseInt(options.fontSize) * 1.2; // 估算高度
+
+                // 根据位置设置水印
+                if (options.watermarkPosition === 'repeat') {
+                    // 重复水印
+                    const spacing = parseInt(options.watermarkSpacing) || 100;
+                    const angleRad = parseInt(options.rotationAngle) * Math.PI / 180;
+
+                    // 计算水印在旋转后的实际占用空间
+                    const rotatedWidth = Math.abs(textWidth * Math.cos(angleRad)) + Math.abs(textHeight * Math.sin(angleRad));
+                    const rotatedHeight = Math.abs(textWidth * Math.sin(angleRad)) + Math.abs(textHeight * Math.cos(angleRad));
+
+                    const cols = Math.ceil(width / (rotatedWidth + spacing)) + 1;
+                    const rows = Math.ceil(height / (rotatedHeight + spacing)) + 1;
+
+                    for (let i = 0; i < rows; i++) {
+                        for (let j = 0; j < cols; j++) {
+                            const x = j * (rotatedWidth + spacing) + parseInt(options.horizontalOffset);
+                            const y = i * (rotatedHeight + spacing) + parseInt(options.verticalOffset);
+
+                            ctx.save();
+                            ctx.translate(x + rotatedWidth/2, y + rotatedHeight/2);
+                            ctx.rotate(angleRad);
+                            ctx.fillText(text, 0, 0);
+                            ctx.restore();
+                        }
+                    }
+                } else {
+                    // 单个水印
+                    let x, y;
+                    switch (options.watermarkPosition) {
+                        case 'top-left':
+                            x = textWidth / 2 + 10 + parseInt(options.horizontalOffset);
+                            y = textHeight / 2 + 10 + parseInt(options.verticalOffset);
+                            ctx.textAlign = 'left';
+                            ctx.textBaseline = 'top';
+                            break;
+                        case 'top-right':
+                            x = width - textWidth / 2 - 10 + parseInt(options.horizontalOffset);
+                            y = textHeight / 2 + 10 + parseInt(options.verticalOffset);
+                            ctx.textAlign = 'right';
+                            ctx.textBaseline = 'top';
+                            break;
+                        case 'bottom-left':
+                            x = textWidth / 2 + 10 + parseInt(options.horizontalOffset);
+                            y = height - textHeight / 2 - 10 + parseInt(options.verticalOffset);
+                            ctx.textAlign = 'left';
+                            ctx.textBaseline = 'bottom';
+                            break;
+                        case 'bottom-right':
+                            x = width - textWidth / 2 - 10 + parseInt(options.horizontalOffset);
+                            y = height - textHeight / 2 - 10 + parseInt(options.verticalOffset);
+                            ctx.textAlign = 'right';
+                            ctx.textBaseline = 'bottom';
+                            break;
+                        default: // center
+                            x = width / 2 + parseInt(options.horizontalOffset);
+                            y = height / 2 + parseInt(options.verticalOffset);
+                    }
+
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(parseInt(options.rotationAngle) * Math.PI / 180);
+                    ctx.fillText(text, 0, 0);
+                    ctx.restore();
+                }
+            }
+
+            // 更新预览
+            function updatePreview() {
+                if (!previewImage.complete || previewImage.naturalWidth === 0) return;
+
+                // 设置画布大小与图片相同
+                watermarkCanvas.width = originalImageWidth || previewImage.naturalWidth;
+                watermarkCanvas.height = originalImageHeight || previewImage.naturalHeight;
+
+                const ctx = watermarkCanvas.getContext('2d');
+                ctx.clearRect(0, 0, watermarkCanvas.width, watermarkCanvas.height);
+
+                // 准备水印文本
+                let text = watermarkText.value;
+
+                // 添加时间戳
+                let timestamp = "";
+                if (addTimestamp.checked) {
+                    const now = new Date();
+                    timestamp = now.toLocaleString();
+                }
+
+                // 添加位置信息
+                let location = "";
+                if (addLocation.checked && locationInfo.textContent) {
+                    location = locationInfo.textContent.replace("位置: ", "");
+                }
+
+                // 应用自定义格式
+                if (customFormat.value) {
+                    text = customFormat.value
+                        .replace('{text}', text)
+                        .replace('{time}', timestamp)
+                        .replace('{location}', location);
+                } else if (timestamp || location) {
+                    text = [text, timestamp, location].filter(Boolean).join(" | ");
+                }
+
+                // 绘制水印
+                drawWatermark(ctx, text, watermarkCanvas.width, watermarkCanvas.height, {
+                    fontSize: fontSize.value,
+                    fontFamily: fontFamily.value,
+                    watermarkColor: watermarkColor.value,
+                    opacity: opacity.value,
+                    rotationAngle: rotationAngle.value,
+                    watermarkPosition: watermarkPosition.value,
+                    watermarkSpacing: watermarkSpacing.value,
+                    horizontalOffset: horizontalOffset.value,
+                    verticalOffset: verticalOffset.value
+                });
+            }
+
+            // 导出图片
+            exportBtn.addEventListener('click', function() {
+                if (!previewImage.complete || previewImage.naturalWidth === 0) {
+                    alert('请先选择一张图片');
+                    return;
+                }
+
+                // 创建临时画布，使用原始图片尺寸
+                const exportCanvas = document.createElement('canvas');
+                exportCanvas.width = originalImageWidth || previewImage.naturalWidth;
+                exportCanvas.height = originalImageHeight || previewImage.naturalHeight;
+                const ctx = exportCanvas.getContext('2d');
+
+                // 创建临时图片对象用于获取原始尺寸
+                const tempImg = new Image();
+                tempImg.onload = function() {
+                    // 绘制原始图片
+                    ctx.drawImage(tempImg, 0, 0, exportCanvas.width, exportCanvas.height);
+
+                    // 准备水印文本
+                    let text = watermarkText.value;
+
+                    // 添加时间戳
+                    let timestamp = "";
+                    if (addTimestamp.checked) {
+                        const now = new Date();
+                        timestamp = now.toLocaleString();
+                    }
+
+                    // 添加位置信息
+                    let location = "";
+                    if (addLocation.checked && locationInfo.textContent) {
+                        location = locationInfo.textContent.replace("位置: ", "");
+                    }
+
+                    // 应用自定义格式
+                    if (customFormat.value) {
+                        text = customFormat.value
+                            .replace('{text}', text)
+                            .replace('{time}', timestamp)
+                            .replace('{location}', location);
+                    } else if (timestamp || location) {
+                        text = [text, timestamp, location].filter(Boolean).join(" | ");
+                    }
+
+                    // 绘制水印
+                    drawWatermark(ctx, text, exportCanvas.width, exportCanvas.height, {
+                        fontSize: fontSize.value,
+                        fontFamily: fontFamily.value,
+                        watermarkColor: watermarkColor.value,
+                        opacity: opacity.value,
+                        rotationAngle: rotationAngle.value,
+                        watermarkPosition: watermarkPosition.value,
+                        watermarkSpacing: watermarkSpacing.value,
+                        horizontalOffset: horizontalOffset.value,
+                        verticalOffset: verticalOffset.value
+                    });
+
+                    // 导出为图片
+                    const filename = exportFilename.value || 'watermarked-image';
+                    const link = document.createElement('a');
+                    link.download = `${filename}.png`;
+                    link.href = exportCanvas.toDataURL('image/png');
+                    link.click();
+                };
+                tempImg.src = previewImage.src;
+            });
+
+            // 绑定事件监听器
+            const updateElements = [watermarkText, fontSize, opacity, rotationAngle, watermarkPosition, watermarkSpacing, addTimestamp, addLocation, customFormat, horizontalOffset, verticalOffset];
+            updateElements.forEach(element => {
+                element.addEventListener('input', updatePreview);
+                element.addEventListener('change', updatePreview);
+            });
+
+            // 模板管理
+            function loadTemplates() {
+                const templates = JSON.parse(localStorage.getItem('watermarkTemplates') || '[]');
+                templateSelect.innerHTML = '<option value="">选择模板...</option>';
+                templatesList.innerHTML = '';
+
+                templates.forEach((template, index) => {
+                    // 添加到下拉菜单
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = template.name;
+                    templateSelect.appendChild(option);
+
+                    // 添加到模板列表
+                    const templateDiv = document.createElement('div');
+                    templateDiv.className = 'checkbox-group';
+
+                    const radio = document.createElement('input');
+                    radio.type = 'radio';
+                    radio.name = 'templateRadio';
+                    radio.value = index;
+                    radio.id = `template-${index}`;
+
+                    const label = document.createElement('label');
+                    label.htmlFor = `template-${index}`;
+                    label.textContent = template.name;
+
+                    templateDiv.appendChild(radio);
+                    templateDiv.appendChild(label);
+                    templatesList.appendChild(templateDiv);
+                });
+
+                // 重置选中状态
+                const selectedRadio = document.querySelector('input[name="templateRadio"]:checked');
+                if (selectedRadio) {
+                    selectedRadio.checked = false;
+                }
+                templateSelect.value = '';
+            }
+
+            function saveTemplate() {
+                const name = templateName.value || `模板_${new Date().toLocaleString()}`;
+                const template = {
+                    name: name,
+                    watermarkText: watermarkText.value,
+                    fontFamily: fontFamily.value,
+                    fontSize: fontSize.value,
+                    watermarkColor: watermarkColor.value,
+                    opacity: opacity.value,
+                    rotationAngle: rotationAngle.value,
+                    watermarkPosition: watermarkPosition.value,
+                    watermarkSpacing: watermarkSpacing.value,
+                    addTimestamp: addTimestamp.checked,
+                    addLocation: addLocation.checked,
+                    customFormat: customFormat.value,
+                    horizontalOffset: horizontalOffset.value,
+                    verticalOffset: verticalOffset.value
+                };
+
+                let templates = JSON.parse(localStorage.getItem('watermarkTemplates') || '[]');
+                templates.push(template);
+                localStorage.setItem('watermarkTemplates', JSON.stringify(templates));
+
+                templateName.value = '';
+                loadTemplates();
+                alert(`模板 "${name}" 已保存`);
+            }
+
+            function loadSelectedTemplate() {
+                let selectedIndex;
+
+                // 优先使用单选按钮的选择
+                const selectedRadio = document.querySelector('input[name="templateRadio"]:checked');
+                if (selectedRadio) {
+                    selectedIndex = selectedRadio.value;
+                } else {
+                    selectedIndex = templateSelect.value;
+                }
+
+                if (selectedIndex === '') return;
+
+                const templates = JSON.parse(localStorage.getItem('watermarkTemplates') || '[]');
+                if (selectedIndex >= templates.length) return;
+
+                const template = templates[selectedIndex];
+
+                watermarkText.value = template.watermarkText;
+                fontFamily.value = template.fontFamily;
+                fontSize.value = template.fontSize;
+                watermarkColor.value = template.watermarkColor;
+                watermarkColorText.value = template.watermarkColor;
+                opacity.value = template.opacity;
+                rotationAngle.value = template.rotationAngle;
+                watermarkPosition.value = template.watermarkPosition;
+                watermarkSpacing.value = template.watermarkSpacing;
+                addTimestamp.checked = template.addTimestamp;
+                addLocation.checked = template.addLocation;
+                customFormat.value = template.customFormat;
+                horizontalOffset.value = template.horizontalOffset;
+                verticalOffset.value = template.verticalOffset;
+
+                // 更新字体预览
+                fontPreview.style.fontFamily = template.fontFamily;
+
+                updatePreview();
+            }
+
+            function deleteTemplate() {
+                let selectedIndex;
+
+                // 优先使用单选按钮的选择
+                const selectedRadio = document.querySelector('input[name="templateRadio"]:checked');
+                if (selectedRadio) {
+                    selectedIndex = selectedRadio.value;
+                } else {
+                    selectedIndex = templateSelect.value;
+                }
+
+                if (selectedIndex === '') {
+                    alert('请先选择一个模板');
+                    return;
+                }
+
+                if (!confirm('确定要删除这个模板吗？')) return;
+
+                let templates = JSON.parse(localStorage.getItem('watermarkTemplates') || '[]');
+                if (selectedIndex >= templates.length) return;
+
+                const deletedName = templates[selectedIndex].name;
+                templates.splice(selectedIndex, 1);
+                localStorage.setItem('watermarkTemplates', JSON.stringify(templates));
+
+                loadTemplates();
+                alert(`模板 "${deletedName}" 已删除`);
+            }
+
+            // 绑定模板按钮事件
+            saveTemplateBtn.addEventListener('click', saveTemplate);
+            saveTemplateBtn2.addEventListener('click', saveTemplate);
+            loadTemplateBtn.addEventListener('click', loadSelectedTemplate);
+            deleteTemplateBtn.addEventListener('click', deleteTemplate);
+            templateSelect.addEventListener('change', loadSelectedTemplate);
+
+            // 初始化
+            loadTemplates();
+            updatePreview();
+        });
+    </script>
+</body>
+</html>

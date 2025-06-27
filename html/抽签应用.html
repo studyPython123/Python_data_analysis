@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>随机抽签应用</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+  <!-- SheetJS库用于处理Excel/CSV -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  
+  <!-- Tailwind配置 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#3B82F6',
+            secondary: '#F97316',
+            neutral: {
+              100: '#F3F4F6',
+              200: '#E5E7EB',
+              700: '#374151',
+              800: '#1F2937',
+              900: '#111827',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          boxShadow: {
+            'soft': '0 4px 20px rgba(0, 0, 0, 0.08)',
+            'hover': '0 8px 30px rgba(0, 0, 0, 0.12)',
+          }
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .animate-spin-slow {
+        animation: spin 8s linear infinite;
+      }
+      .animate-bounce-subtle {
+        animation: bounce 2s infinite;
+      }
+      .text-shadow {
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .transition-height {
+        transition: max-height 0.5s ease-in-out;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-neutral-100 to-neutral-200 min-h-screen font-sans text-neutral-800">
+  <div class="container mx-auto px-4 py-12 max-w-4xl">
+    <!-- 头部 -->
+    <header class="text-center mb-10">
+      <h1 class="text-[clamp(2rem,5vw,3.5rem)] font-bold text-primary mb-3 text-shadow">
+        <i class="fa-solid fa-random mr-3"></i>随机抽签
+      </h1>
+      <p class="text-neutral-700 text-lg max-w-2xl mx-auto">
+        导入选项列表，设置抽取规则，随机选择幸运儿！
+      </p>
+    </header>
+    
+    <!-- 主要内容区 -->
+    <main class="bg-white rounded-2xl shadow-soft p-6 md:p-8 mb-8 transform transition-all duration-300 hover:shadow-hover">
+      <!-- 导入区域 -->
+      <div class="mb-8">
+        <div class="flex flex-col md:flex-row md:items-center justify-between mb-4">
+          <label class="block text-lg font-medium text-neutral-800 mb-2 md:mb-0">
+            <i class="fa-solid fa-upload mr-2"></i>导入选项
+          </label>
+          <div class="flex flex-wrap gap-2">
+            <label for="fileUpload" class="bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-medium py-2 px-4 rounded-lg cursor-pointer transition-colors flex items-center">
+              <i class="fa-solid fa-file-excel mr-2"></i>Excel/CSV
+              <input type="file" id="fileUpload" accept=".xlsx,.xls,.csv,.txt" class="hidden" />
+            </label>
+            <button id="pasteBtn" class="bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-medium py-2 px-4 rounded-lg transition-colors flex items-center">
+              <i class="fa-solid fa-clipboard mr-2"></i>粘贴文本
+            </button>
+          </div>
+        </div>
+        
+        <!-- 导入预览 -->
+        <div id="importPreview" class="hidden bg-neutral-50 rounded-xl p-4 mb-4 border border-neutral-200">
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="font-medium text-neutral-700">导入预览</h3>
+            <span id="importedCount" class="text-sm text-neutral-500">0 个选项</span>
+          </div>
+          <div id="importedItems" class="max-h-32 overflow-y-auto text-sm text-neutral-700"></div>
+          <div class="mt-4 flex justify-end">
+            <button id="confirmImportBtn" class="bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg transition-colors mr-2">
+              确认导入
+            </button>
+            <button id="cancelImportBtn" class="bg-neutral-200 hover:bg-neutral-300 text-neutral-700 font-medium py-2 px-4 rounded-lg transition-colors">
+              取消
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 输入区域 -->
+      <div class="mb-8">
+        <div class="flex flex-col md:flex-row md:items-center justify-between mb-3">
+          <label for="items" class="block text-lg font-medium text-neutral-800 mb-2 md:mb-0">
+            <i class="fa-solid fa-list-ul mr-2"></i>选项列表（每行一个）
+          </label>
+          <div class="flex items-center">
+            <button id="addSampleBtn" class="text-primary hover:text-primary/80 text-sm font-medium mr-3 transition-colors">
+              添加示例数据
+            </button>
+            <button id="clearBtn" class="text-neutral-600 hover:text-neutral-900 text-sm font-medium transition-colors">
+              <i class="fa-solid fa-eraser mr-1"></i>清空
+            </button>
+          </div>
+        </div>
+        <textarea 
+          id="items" 
+          class="w-full h-40 p-4 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all resize-none"
+          placeholder="例如：
+张三
+李四
+王五
+..."></textarea>
+        <div class="flex justify-between items-center mt-3">
+          <span id="itemCount" class="text-sm text-neutral-600">已输入: 0 个选项</span>
+          <div class="flex items-center">
+            <span class="text-sm text-neutral-500 mr-2">复制:</span>
+            <button id="copyBtn" class="text-neutral-600 hover:text-neutral-900 transition-colors">
+              <i class="fa-solid fa-copy"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 保存选项 -->
+      <div class="flex justify-end mb-8">
+        <button id="saveListBtn" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-6 rounded-lg transition-colors flex items-center">
+          <i class="fa-solid fa-save mr-2"></i>保存选项列表
+        </button>
+        <div id="saveStatus" class="ml-3 text-sm text-green-600 hidden">
+          <i class="fa-solid fa-check-circle"></i> 已保存
+        </div>
+      </div>
+      
+      <!-- 抽取设置 -->
+      <div class="bg-neutral-50 rounded-xl p-5 mb-8 border border-neutral-200">
+        <h3 class="text-lg font-medium text-neutral-800 mb-4 flex items-center">
+          <i class="fa-solid fa-sliders mr-2"></i>抽取设置
+        </h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- 抽取方式选择 -->
+          <div>
+            <label class="block text-neutral-700 font-medium mb-2">抽取方式</label>
+            <div class="flex flex-wrap gap-3">
+              <label class="inline-flex items-center cursor-pointer">
+                <input type="radio" name="drawType" value="count" class="form-radio text-primary h-5 w-5" checked>
+                <span class="ml-2 text-neutral-700">按人数</span>
+              </label>
+              <label class="inline-flex items-center cursor-pointer">
+                <input type="radio" name="drawType" value="percentage" class="form-radio text-primary h-5 w-5">
+                <span class="ml-2 text-neutral-700">按比例</span>
+              </label>
+            </div>
+          </div>
+          
+          <!-- 抽取数量 -->
+          <div id="drawCountContainer">
+            <label for="drawCount" class="block text-neutral-700 font-medium mb-2">抽取人数</label>
+            <div class="relative">
+              <input 
+                type="number" 
+                id="drawCount" 
+                min="1" 
+                value="1" 
+                class="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all pl-10"
+              >
+              <span class="absolute left-3 top-3 text-neutral-500">
+                <i class="fa-solid fa-user"></i>
+              </span>
+            </div>
+          </div>
+          
+          <!-- 抽取比例 -->
+          <div id="drawPercentageContainer" class="hidden">
+            <label for="drawPercentage" class="block text-neutral-700 font-medium mb-2">抽取比例</label>
+            <div class="relative">
+              <input 
+                type="number" 
+                id="drawPercentage" 
+                min="1" 
+                max="100" 
+                value="10" 
+                class="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all pl-10"
+              >
+              <span class="absolute left-3 top-3 text-neutral-500">
+                <i class="fa-solid fa-percent"></i>
+              </span>
+            </div>
+          </div>
+          
+          <!-- 不重复抽取 -->
+          <div class="flex items-center">
+            <input 
+              type="checkbox" 
+              id="uniqueDraw" 
+              class="form-checkbox h-5 w-5 text-primary rounded border-neutral-300 focus:ring-primary"
+              checked
+            >
+            <label for="uniqueDraw" class="ml-2 text-neutral-700">不重复抽取（每个选项最多选中一次）</label>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 抽签按钮 -->
+      <div class="text-center mb-8">
+        <button 
+          id="drawBtn" 
+          class="bg-primary hover:bg-primary/90 text-white font-bold py-4 px-8 rounded-full text-lg shadow-lg transform transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-primary/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+          disabled>
+          <i class="fa-solid fa-dice-five mr-2"></i>开始抽签
+        </button>
+      </div>
+      
+      <!-- 结果展示区 -->
+      <div id="resultContainer" class="max-h-0 overflow-hidden transition-height">
+        <div class="border-t border-neutral-200 pt-8">
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-neutral-800">
+              <i class="fa-solid fa-trophy text-secondary mr-2"></i>抽签结果
+            </h2>
+            <div class="flex gap-2">
+              <button id="exportExcelBtn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-colors flex items-center">
+                <i class="fa-solid fa-file-excel mr-1"></i> Excel
+              </button>
+              <button id="exportCsvBtn" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors flex items-center">
+                <i class="fa-solid fa-file-csv mr-1"></i> CSV
+              </button>
+              <button id="exportTxtBtn" class="bg-neutral-600 hover:bg-neutral-700 text-white py-2 px-4 rounded-lg transition-colors flex items-center">
+                <i class="fa-solid fa-file-text mr-1"></i> TXT
+              </button>
+            </div>
+          </div>
+          
+          <div class="relative">
+            <!-- 装饰性元素 -->
+            <div class="absolute w-64 h-64 rounded-full bg-primary/10 animate-pulse"></div>
+            <div class="absolute w-48 h-48 rounded-full bg-secondary/10 animate-pulse" style="animation-delay: 1s;"></div>
+            
+            <!-- 结果显示 -->
+            <div id="resultDisplay" class="relative bg-white rounded-2xl shadow-lg p-6 border-2 border-primary/30 transform transition-all duration-500 scale-100">
+              <div id="resultItems" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <!-- 结果项将动态添加到这里 -->
+              </div>
+              
+              <div id="noResult" class="py-10 text-center">
+                <p class="text-xl text-neutral-600">点击上方按钮开始抽签</p>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 历史记录 -->
+          <div id="historyContainer" class="mt-10">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-xl font-semibold text-neutral-700 flex items-center">
+                <i class="fa-solid fa-history mr-2"></i>历史记录
+              </h3>
+              <button id="clearHistoryBtn" class="text-sm text-neutral-500 hover:text-neutral-700 transition-colors">
+                清空历史
+              </button>
+            </div>
+            <div id="historyList" class="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto pr-2">
+              <!-- 历史记录将动态添加到这里 -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+    
+    <!-- 页脚 -->
+    <footer class="text-center text-neutral-600 text-sm">
+      <p>随机抽签 | 公平公正，随机选择</p>
+    </footer>
+  </div>
+
+  <!-- 粘贴文本模态框 -->
+  <div id="pasteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full mx-4 transform transition-all duration-300 scale-95 opacity-0" id="modalContent">
+      <div class="p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-xl font-bold text-neutral-800">粘贴文本</h3>
+          <button id="closeModalBtn" class="text-neutral-500 hover:text-neutral-800">
+            <i class="fa-solid fa-times"></i>
+          </button>
+        </div>
+        <textarea 
+          id="pasteTextarea" 
+          class="w-full h-40 p-4 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all resize-none"
+          placeholder="粘贴文本内容..."></textarea>
+        <div class="mt-4 flex justify-end">
+          <button id="cancelPasteBtn" class="bg-neutral-200 hover:bg-neutral-300 text-neutral-700 font-medium py-2 px-4 rounded-lg transition-colors mr-2">
+            取消
+          </button>
+          <button id="confirmPasteBtn" class="bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+            确认粘贴
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 获取DOM元素
+    const itemsTextarea = document.getElementById('items');
+    const drawBtn = document.getElementById('drawBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const itemCount = document.getElementById('itemCount');
+    const resultContainer = document.getElementById('resultContainer');
+    const resultItems = document.getElementById('resultItems');
+    const noResult = document.getElementById('noResult');
+    const historyList = document.getElementById('historyList');
+    const fileUpload = document.getElementById('fileUpload');
+    const importPreview = document.getElementById('importPreview');
+    const importedItems = document.getElementById('importedItems');
+    const importedCount = document.getElementById('importedCount');
+    const confirmImportBtn = document.getElementById('confirmImportBtn');
+    const cancelImportBtn = document.getElementById('cancelImportBtn');
+    const addSampleBtn = document.getElementById('addSampleBtn');
+    const drawTypeRadios = document.querySelectorAll('input[name="drawType"]');
+    const drawCountContainer = document.getElementById('drawCountContainer');
+    const drawPercentageContainer = document.getElementById('drawPercentageContainer');
+    const drawCount = document.getElementById('drawCount');
+    const drawPercentage = document.getElementById('drawPercentage');
+    const uniqueDraw = document.getElementById('uniqueDraw');
+    const exportExcelBtn = document.getElementById('exportExcelBtn');
+    const exportCsvBtn = document.getElementById('exportCsvBtn');
+    const exportTxtBtn = document.getElementById('exportTxtBtn');
+    const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+    const pasteBtn = document.getElementById('pasteBtn');
+    const pasteModal = document.getElementById('pasteModal');
+    const modalContent = document.getElementById('modalContent');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const pasteTextarea = document.getElementById('pasteTextarea');
+    const confirmPasteBtn = document.getElementById('confirmPasteBtn');
+    const cancelPasteBtn = document.getElementById('cancelPasteBtn');
+    const saveListBtn = document.getElementById('saveListBtn');
+    const saveStatus = document.getElementById('saveStatus');
+    
+    // 历史记录数组
+    let drawHistory = JSON.parse(localStorage.getItem('drawHistory') || '[]');
+    let currentDrawResult = [];
+    
+    // 更新选项计数
+    function updateItemCount() {
+      const items = getItems();
+      itemCount.textContent = `已输入: ${items.length} 个选项`;
+      
+      // 至少需要2个选项才能抽签
+      if (items.length >= 2) {
+        drawBtn.disabled = false;
+      } else {
+        drawBtn.disabled = true;
+      }
+    }
+    
+    // 从文本框获取选项
+    function getItems() {
+      const text = itemsTextarea.value.trim();
+      if (!text) return [];
+      
+      // 按行分割并过滤空行
+      return text.split('\n')
+        .map(item => item.trim())
+        .filter(item => item !== '');
+    }
+    
+    // 获取实际抽取数量
+    function getDrawAmount() {
+      const items = getItems();
+      const drawType = document.querySelector('input[name="drawType"]:checked').value;
+      
+      if (drawType === 'count') {
+        return Math.min(parseInt(drawCount.value) || 1, items.length);
+      } else {
+        const percentage = Math.min(Math.max(parseInt(drawPercentage.value) || 10, 1), 100);
+        return Math.max(1, Math.floor(items.length * percentage / 100));
+      }
+    }
+    
+    // 随机选择指定数量的选项
+    function drawRandomItems() {
+      const items = getItems();
+      const amount = getDrawAmount();
+      
+      if (items.length < 2 || amount < 1) return [];
+      
+      if (uniqueDraw.checked) {
+        // 不重复抽取
+        const shuffled = [...items].sort(() => 0.5 - Math.random());
+        return shuffled.slice(0, amount);
+      } else {
+        // 可重复抽取
+        const result = [];
+        for (let i = 0; i < amount; i++) {
+          const randomIndex = Math.floor(Math.random() * items.length);
+          result.push(items[randomIndex]);
+        }
+        return result;
+      }
+    }
+    
+    // 添加到历史记录
+    function addToHistory(items) {
+      const now = new Date();
+      const timestamp = now.toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+      
+      const entry = {
+        items,
+        timestamp,
+        drawAmount: items.length,
+        totalItems: getItems().length
+      };
+      
+      drawHistory.unshift(entry);
+      
+      // 限制历史记录最多20条
+      if (drawHistory.length > 20) {
+        drawHistory.pop();
+      }
+      
+      // 保存到本地存储
+      localStorage.setItem('drawHistory', JSON.stringify(drawHistory));
+      
+      updateHistoryDisplay();
+    }
+    
+    // 更新历史记录显示
+    function updateHistoryDisplay() {
+      historyList.innerHTML = '';
+      
+      if (drawHistory.length === 0) {
+        const emptyItem = document.createElement('div');
+        emptyItem.className = 'col-span-full text-center text-neutral-500 py-4';
+        emptyItem.textContent = '暂无历史记录';
+        historyList.appendChild(emptyItem);
+        return;
+      }
+      
+      drawHistory.forEach((entry, index) => {
+        const historyItem = document.createElement('div');
+        historyItem.className = 'bg-neutral-50 rounded-lg p-4 transition-all hover:shadow-md';
+        
+        historyItem.innerHTML = `
+          <div class="flex justify-between items-start mb-2">
+            <div>
+              <span class="text-primary font-bold mr-2">#${index + 1}</span>
+              <span class="text-sm text-neutral-500">抽取了 ${entry.drawAmount}/${entry.totalItems} 个</span>
+            </div>
+            <span class="text-xs text-neutral-500">${entry.timestamp}</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+            ${entry.items.map(item => `
+              <div class="bg-white rounded px-2 py-1 text-sm text-neutral-700 truncate border border-neutral-200">
+                ${item}
+              </div>
+            `).join('')}
+          </div>
+        `;
+        
+        historyList.appendChild(historyItem);
+      });
+    }
+    
+    // 显示抽签结果
+    function showResult(result) {
+      currentDrawResult = result;
+      
+      // 显示结果容器
+      resultContainer.style.maxHeight = '1000px';
+      
+      // 清空现有结果
+      resultItems.innerHTML = '';
+      noResult.style.display = 'none';
+      
+      // 显示结果项
+      result.forEach((item, index) => {
+        const resultItem = document.createElement('div');
+        resultItem.className = 'bg-white rounded-xl p-4 border border-neutral-200 shadow-sm transform transition-all duration-300 hover:shadow-md hover:-translate-y-1';
+        
+        resultItem.innerHTML = `
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-primary font-bold">#${index + 1}</span>
+            <span class="text-xs text-neutral-500">幸运儿</span>
+          </div>
+          <div class="text-center py-3">
+            <div class="text-2xl font-bold text-neutral-800 break-words">${item}</div>
+          </div>
+        `;
+        
+        resultItems.appendChild(resultItem);
+      });
+      
+      // 添加到历史记录
+      addToHistory(result);
+    }
+    
+    // 处理文件上传
+    function handleFileUpload(file) {
+      if (!file) return;
+      
+      const reader = new FileReader();
+      
+      reader.onload = function(e) {
+        try {
+          let items = [];
+          
+          // 检查文件类型
+          if (file.name.endsWith('.txt')) {
+            // 处理TXT文件
+            const text = e.target.result;
+            items = text.split('\n')
+              .map(line => line.trim())
+              .filter(line => line !== '');
+          } else {
+            // 处理Excel/CSV文件
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            
+            // 转换为JSON
+            const json = XLSX.utils.sheet_to_json(worksheet);
+            
+            if (json.length > 0) {
+              // 检查第一行的格式
+              const firstRow = json[0];
+              const keys = Object.keys(firstRow);
+              
+              if (keys.length === 1) {
+                // 只有一列数据，直接使用
+                items = json.map(row => row[keys[0]]?.toString().trim())
+                  .filter(item => item !== undefined && item !== '');
+              } else {
+                // 有多列数据，提取第一列
+                items = json.map(row => {
+                  const firstValue = Object.values(row)[0];
+                  return firstValue?.toString().trim();
+                }).filter(item => item !== undefined && item !== '');
+              }
+            } else {
+              // 尝试以表格形式读取
+              const aoa = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+              items = aoa.slice(1).map(row => row[0]?.toString().trim())
+                .filter(item => item !== undefined && item !== '');
+            }
+          }
+          
+          // 显示导入预览
+          showImportPreview(items);
+        } catch (error) {
+          alert('文件解析错误，请检查文件格式是否正确。');
+          console.error(error);
+        }
+      };
+      
+      if (file.name.endsWith('.txt')) {
+        reader.readAsText(file);
+      } else {
+        reader.readAsArrayBuffer(file);
+      }
+    }
+    
+    // 显示导入预览
+    function showImportPreview(items) {
+      importedItems.innerHTML = '';
+      importedCount.textContent = `${items.length} 个选项`;
+      
+      // 最多显示20个预览项
+      const previewItems = items.slice(0, 20);
+      
+      if (previewItems.length < items.length) {
+        const ellipsis = document.createElement('div');
+        ellipsis.className = 'text-neutral-500 text-center py-2';
+        ellipsis.textContent = `...等 ${items.length} 个选项`;
+        importedItems.appendChild(ellipsis);
+      } else {
+        previewItems.forEach(item => {
+          const itemElement = document.createElement('div');
+          itemElement.className = 'py-1 border-b border-neutral-200 last:border-b-0';
+          itemElement.textContent = item;
+          importedItems.appendChild(itemElement);
+        });
+      }
+      
+      // 保存导入的内容到临时变量
+      confirmImportBtn.onclick = () => {
+        itemsTextarea.value = items.join('\n');
+        updateItemCount();
+        importPreview.classList.add('hidden');
+      };
+      
+      cancelImportBtn.onclick = () => {
+        importPreview.classList.add('hidden');
+      };
+      
+      importPreview.classList.remove('hidden');
+    }
+    
+    // 导出结果
+    function exportResult(format) {
+      if (currentDrawResult.length === 0) {
+        alert('没有可导出的结果');
+        return;
+      }
+      
+      try {
+        let fileName;
+        
+        switch (format) {
+          case 'excel':
+            // 创建工作表
+            const ws = XLSX.utils.aoa_to_sheet([['抽签结果']].concat(currentDrawResult.map((item, index) => [`#${index + 1}`, item])));
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '抽签结果');
+            
+            // 导出Excel
+            fileName = `抽签结果_${new Date().toISOString().slice(0,10)}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+            break;
+            
+          case 'csv':
+            const csvContent = currentDrawResult.map((item, index) => `${index + 1},"${item}"`).join('\n');
+            fileName = `抽签结果_${new Date().toISOString().slice(0,10)}.csv`;
+            downloadFile(csvContent, fileName, 'text/csv');
+            break;
+            
+          case 'txt':
+            const txtContent = currentDrawResult.map((item, index) => `#${index + 1} ${item}`).join('\n');
+            fileName = `抽签结果_${new Date().toISOString().slice(0,10)}.txt`;
+            downloadFile(txtContent, fileName, 'text/plain');
+            break;
+        }
+      } catch (error) {
+        alert('导出失败，请重试。');
+        console.error('导出错误:', error);
+      }
+    }
+    
+    // 下载文件辅助函数
+    function downloadFile(content, fileName, contentType) {
+      const a = document.createElement('a');
+      const file = new Blob([content], { type: contentType });
+      a.href = URL.createObjectURL(file);
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+    
+    // 保存选项列表
+    function saveOptionsList() {
+      const items = getItems();
+      
+      if (items.length === 0) {
+        alert('选项列表为空，无需保存');
+        return;
+      }
+      
+      try {
+        localStorage.setItem('lotteryOptions', itemsTextarea.value);
+        
+        // 显示保存成功提示
+        saveStatus.classList.remove('hidden');
+        setTimeout(() => {
+          saveStatus.classList.add('hidden');
+        }, 2000);
+      } catch (error) {
+        alert('保存失败，请稍后重试');
+        console.error('保存选项列表错误:', error);
+      }
+    }
+    
+    // 加载保存的选项列表
+    function loadSavedOptions() {
+      try {
+        const savedOptions = localStorage.getItem('lotteryOptions');
+        if (savedOptions) {
+          itemsTextarea.value = savedOptions;
+          updateItemCount();
+        }
+      } catch (error) {
+        console.error('加载保存的选项列表错误:', error);
+      }
+    }
+    
+    // 打开粘贴模态框
+    function openPasteModal() {
+      pasteModal.classList.remove('hidden');
+      // 动画效果
+      setTimeout(() => {
+        modalContent.classList.remove('scale-95', 'opacity-0');
+        modalContent.classList.add('scale-100', 'opacity-100');
+      }, 10);
+      pasteTextarea.focus();
+    }
+    
+    // 关闭粘贴模态框
+    function closePasteModal() {
+      modalContent.classList.remove('scale-100', 'opacity-100');
+      modalContent.classList.add('scale-95', 'opacity-0');
+      setTimeout(() => {
+        pasteModal.classList.add('hidden');
+      }, 300);
+    }
+    
+    // 添加示例数据
+    function addSampleData() {
+      const sampleData = [
+        '张三', '李四', '王五', '赵六', '钱七', 
+        '孙八', '周九', '吴十', '郑十一', '王十二',
+        '陈十三', '李十四', '张十五', '刘十六', '黄十七'
+      ];
+      itemsTextarea.value = sampleData.join('\n');
+      updateItemCount();
+    }
+    
+    // 事件监听
+    itemsTextarea.addEventListener('input', updateItemCount);
+    clearBtn.addEventListener('click', () => {
+      itemsTextarea.value = '';
+      updateItemCount();
+    });
+    
+    copyBtn.addEventListener('click', () => {
+      itemsTextarea.select();
+      document.execCommand('copy');
+      alert('已复制选项列表');
+    });
+    
+    drawBtn.addEventListener('click', () => {
+      const result = drawRandomItems();
+      if (result && result.length > 0) {
+        showResult(result);
+      }
+    });
+    
+    fileUpload.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        handleFileUpload(file);
+      }
+      // 重置文件输入，允许重复选择同一文件
+      fileUpload.value = '';
+    });
+    
+    addSampleBtn.addEventListener('click', addSampleData);
+    
+    // 切换抽取方式
+    drawTypeRadios.forEach(radio => {
+      radio.addEventListener('change', () => {
+        if (radio.value === 'count') {
+          drawCountContainer.classList.remove('hidden');
+          drawPercentageContainer.classList.add('hidden');
+        } else {
+          drawCountContainer.classList.add('hidden');
+          drawPercentageContainer.classList.remove('hidden');
+        }
+      });
+    });
+    
+    // 导出按钮
+    exportExcelBtn.addEventListener('click', () => exportResult('excel'));
+    exportCsvBtn.addEventListener('click', () => exportResult('csv'));
+    exportTxtBtn.addEventListener('click', () => exportResult('txt'));
+    
+    // 清空历史
+    clearHistoryBtn.addEventListener('click', () => {
+      if (confirm('确定要清空所有历史记录吗？')) {
+        drawHistory = [];
+        localStorage.setItem('drawHistory', JSON.stringify(drawHistory));
+        updateHistoryDisplay();
+      }
+    });
+    
+    // 粘贴文本
+    pasteBtn.addEventListener('click', openPasteModal);
+    closeModalBtn.addEventListener('click', closePasteModal);
+    cancelPasteBtn.addEventListener('click', closePasteModal);
+    
+    confirmPasteBtn.addEventListener('click', () => {
+      const text = pasteTextarea.value.trim();
+      if (text) {
+        itemsTextarea.value = text;
+        updateItemCount();
+        closePasteModal();
+      }
+    });
+    
+    // 点击模态框外部关闭
+    pasteModal.addEventListener('click', (e) => {
+      if (e.target === pasteModal) {
+        closePasteModal();
+      }
+    });
+    
+    // 保存选项列表
+    saveListBtn.addEventListener('click', saveOptionsList);
+    
+    // 初始化
+    loadSavedOptions();
+    updateItemCount();
+    updateHistoryDisplay();
+    
+    // 确保结果容器初始状态为隐藏
+    if (currentDrawResult.length === 0) {
+      resultContainer.style.maxHeight = '0';
+    }
+  </script>
+</body>
+</html>
+    

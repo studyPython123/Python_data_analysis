@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>高级数学计算器</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/mathjs@11.9.1/lib/browser/math.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#165DFF',
+            secondary: '#36CFC9',
+            accent: '#FF7D00',
+            neutral: '#1D2129',
+            'neutral-light': '#F2F3F5',
+          },
+          fontFamily: {
+            inter: ['Inter', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .calculator-btn {
+        @apply transition-all duration-200 ease-in-out rounded-lg shadow-md flex items-center justify-center;
+      }
+      .calculator-btn:hover {
+        @apply transform scale-105 shadow-lg;
+      }
+      .calculator-btn:active {
+        @apply transform scale-95;
+      }
+      .input-focus {
+        @apply focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-200;
+      }
+      .animate-fade-in {
+        animation: fadeIn 0.5s ease-in-out;
+      }
+      .animate-slide-up {
+        animation: slideUp 0.3s ease-out;
+      }
+      .animate-pulse-light {
+        animation: pulseLight 2s infinite;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes slideUp {
+        from { transform: translateY(20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+      @keyframes pulseLight {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+      }
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-neutral-light to-white min-h-screen font-inter text-neutral">
+  <div class="container mx-auto px-4 py-8 max-w-5xl">
+    <!-- 标题和描述 -->
+    <header class="text-center mb-8 animate-fade-in">
+      <h1 class="text-[clamp(2rem,5vw,3.5rem)] font-bold text-neutral mb-3">
+        <span class="text-primary">高级</span>数学计算器
+      </h1>
+      <p class="text-gray-600 max-w-2xl mx-auto text-[clamp(1rem,2vw,1.2rem)]">
+        支持基础计算、函数绘图以及高级数学运算（积分、求导等）
+      </p>
+    </header>
+    
+    <!-- 计算器主体 -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <!-- 计算器面板 -->
+      <div class="lg:col-span-2 bg-white rounded-2xl shadow-xl overflow-hidden transform transition-all duration-300 hover:shadow-2xl animate-slide-up">
+        <!-- 计算历史 -->
+        <div id="history-container" class="p-4 bg-gray-50 border-b border-gray-200 max-h-40 overflow-y-auto">
+          <h3 class="font-medium text-sm text-gray-500 mb-2">计算历史</h3>
+          <div id="calculation-history" class="space-y-2 text-sm"></div>
+        </div>
+        
+        <!-- 计算输入区域 -->
+        <div class="p-6">
+          <div class="mb-4">
+            <label for="expression" class="block text-sm font-medium text-gray-700 mb-1">表达式</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                <i class="fa-solid fa-calculator"></i>
+              </span>
+              <input 
+                type="text" 
+                id="expression" 
+                class="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 input-focus"
+                placeholder="输入数学表达式，例如：3+5*sin(2*pi)"
+              >
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label for="variable" class="block text-sm font-medium text-gray-700 mb-1">变量</label>
+              <div class="relative">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                  <i class="fa-solid fa-xmark"></i>
+                </span>
+                <input 
+                  type="text" 
+                  id="variable" 
+                  class="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 input-focus"
+                  placeholder="默认 x"
+                  value="x"
+                >
+              </div>
+            </div>
+            
+            <div>
+              <label for="operation" class="block text-sm font-medium text-gray-700 mb-1">运算类型</label>
+              <div class="relative">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                  <i class="fa-solid fa-cogs"></i>
+                </span>
+                <select 
+                  id="operation" 
+                  class="w-full pl-10 pr-10 py-3 rounded-lg border border-gray-300 appearance-none input-focus bg-white"
+                >
+                  <option value="calculate">计算</option>
+                  <option value="derivative">求导</option>
+                  <option value="integral">积分</option>
+                  <option value="simplify">简化</option>
+                  <option value="factor">因式分解</option>
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                  <i class="fa-solid fa-chevron-down text-xs"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 积分/导数的额外参数 -->
+          <div id="additional-params" class="grid grid-cols-2 gap-4 mb-4 hidden">
+            <div id="lower-bound-container">
+              <label for="lower-bound" class="block text-sm font-medium text-gray-700 mb-1">下限</label>
+              <div class="relative">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                  <i class="fa-solid fa-arrow-down"></i>
+                </span>
+                <input 
+                  type="text" 
+                  id="lower-bound" 
+                  class="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 input-focus"
+                  placeholder="积分下限"
+                >
+              </div>
+            </div>
+            
+            <div id="upper-bound-container">
+              <label for="upper-bound" class="block text-sm font-medium text-gray-700 mb-1">上限</label>
+              <div class="relative">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                  <i class="fa-solid fa-arrow-up"></i>
+                </span>
+                <input 
+                  type="text" 
+                  id="upper-bound" 
+                  class="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 input-focus"
+                  placeholder="积分上限"
+                >
+              </div>
+            </div>
+          </div>
+          
+          <!-- 结果显示 -->
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-1">结果</label>
+            <div id="result" class="p-4 bg-gray-50 rounded-lg min-h-[60px] border border-gray-200 flex items-center text-lg">
+              <span class="text-gray-400">计算结果将显示在这里...</span>
+            </div>
+          </div>
+          
+          <!-- 按钮组 -->
+          <div class="flex justify-between">
+            <button id="clear-btn" class="calculator-btn bg-gray-200 hover:bg-gray-300 text-neutral px-6 py-3">
+              <i class="fa-solid fa-eraser mr-2"></i> 清除
+            </button>
+            <button id="calculate-btn" class="calculator-btn bg-primary hover:bg-primary/90 text-white px-8 py-3">
+              <i class="fa-solid fa-calculator mr-2"></i> 计算
+            </button>
+          </div>
+        </div>
+        
+        <!-- 计算器按键 -->
+        <div class="bg-gray-50 p-4 border-t border-gray-200">
+          <div class="grid grid-cols-4 gap-3">
+            <button class="calculator-btn bg-white hover:bg-gray-100 text-neutral py-3" data-value="7">7</button>
+            <button class="calculator-btn bg-white hover:bg-gray-100 text-neutral py-3" data-value="8">8</button>
+            <button class="calculator-btn bg-white hover:bg-gray-100 text-neutral py-3" data-value="9">9</button>
+            <button class="calculator-btn bg-gray-200 hover:bg-gray-300 text-neutral py-3" data-value="/">÷</button>
+            
+            <button class="calculator-btn bg-white hover:bg-gray-100 text-neutral py-3" data-value="4">4</button>
+            <button class="calculator-btn bg-white hover:bg-gray-100 text-neutral py-3" data-value="5">5</button>
+            <button class="calculator-btn bg-white hover:bg-gray-100 text-neutral py-3" data-value="6">6</button>
+            <button class="calculator-btn bg-gray-200 hover:bg-gray-300 text-neutral py-3" data-value="*">×</button>
+            
+            <button class="calculator-btn bg-white hover:bg-gray-100 text-neutral py-3" data-value="1">1</button>
+            <button class="calculator-btn bg-white hover:bg-gray-100 text-neutral py-3" data-value="2">2</button>
+            <button class="calculator-btn bg-white hover:bg-gray-100 text-neutral py-3" data-value="3">3</button>
+            <button class="calculator-btn bg-gray-200 hover:bg-gray-300 text-neutral py-3" data-value="-">−</button>
+            
+            <button class="calculator-btn bg-white hover:bg-gray-100 text-neutral py-3" data-value="0">0</button>
+            <button class="calculator-btn bg-white hover:bg-gray-100 text-neutral py-3" data-value=".">.</button>
+            <button class="calculator-btn bg-gray-200 hover:bg-gray-300 text-neutral py-3" data-value="%">%</button>
+            <button class="calculator-btn bg-gray-200 hover:bg-gray-300 text-neutral py-3" data-value="+">+</button>
+          </div>
+          
+          <div class="grid grid-cols-5 gap-3 mt-3">
+            <button class="calculator-btn bg-gray-200 hover:bg-gray-300 text-neutral py-3" data-value="sin">sin</button>
+            <button class="calculator-btn bg-gray-200 hover:bg-gray-300 text-neutral py-3" data-value="cos">cos</button>
+            <button class="calculator-btn bg-gray-200 hover:bg-gray-300 text-neutral py-3" data-value="tan">tan</button>
+            <button class="calculator-btn bg-gray-200 hover:bg-gray-300 text-neutral py-3" data-value="^">^</button>
+            <button class="calculator-btn bg-gray-200 hover:bg-gray-300 text-neutral py-3" data-value="sqrt">√</button>
+            
+            <button class="calculator-btn bg-gray-200 hover:bg-gray-300 text-neutral py-3" data-value="pi">π</button>
+            <button class="calculator-btn bg-gray-200 hover:bg-gray-300 text-neutral py-3" data-value="e">e</button>
+            <button class="calculator-btn bg-gray-200 hover:bg-gray-300 text-neutral py-3" data-value="ln">ln</button>
+            <button class="calculator-btn bg-gray-200 hover:bg-gray-300 text-neutral py-3" data-value="log">log</button>
+            <button class="calculator-btn bg-gray-200 hover:bg-gray-300 text-neutral py-3" data-value="(">(</button>
+            
+            <button class="calculator-btn bg-gray-200 hover:bg-gray-300 text-neutral py-3" data-value=")">)</button>
+            <button class="calculator-btn bg-gray-200 hover:bg-gray-300 text-neutral py-3" data-value="abs">|x|</button>
+            <button class="calculator-btn bg-gray-200 hover:bg-gray-300 text-neutral py-3" data-value="x" data-insert="true">x</button>
+            <button class="calculator-btn bg-gray-200 hover:bg-gray-300 text-neutral py-3" data-value="C">C</button>
+            <button class="calculator-btn bg-gray-200 hover:bg-gray-300 text-neutral py-3" data-value="del">⌫</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 右侧功能区 -->
+      <div class="space-y-6">
+        <!-- 函数图像 -->
+        <div class="bg-white rounded-2xl shadow-xl overflow-hidden transform transition-all duration-300 hover:shadow-2xl animate-slide-up delay-100">
+          <div class="p-4 bg-primary text-white flex justify-between items-center">
+            <h3 class="font-medium">函数图像</h3>
+            <button id="plot-btn" class="bg-white/20 hover:bg-white/30 rounded-lg px-3 py-1 text-sm transition-all duration-200">
+              <i class="fa-solid fa-chart-line mr-1"></i> 绘制
+            </button>
+          </div>
+          <div class="p-4">
+            <div class="mb-3">
+              <input 
+                type="text" 
+                id="function-to-plot" 
+                class="w-full px-3 py-2 rounded-lg border border-gray-300 input-focus"
+                placeholder="输入函数，例如：sin(x)"
+                value="sin(x)"
+              >
+            </div>
+            <div class="h-64">
+              <canvas id="function-plot"></canvas>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 使用帮助 -->
+        <div class="bg-white rounded-2xl shadow-xl overflow-hidden transform transition-all duration-300 hover:shadow-2xl animate-slide-up delay-200">
+          <div class="p-4 bg-neutral text-white">
+            <h3 class="font-medium">使用帮助</h3>
+          </div>
+          <div class="p-4 space-y-3">
+            <div class="flex items-start">
+              <div class="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-1 flex-shrink-0">
+                <i class="fa-solid fa-1"></i>
+              </div>
+              <div>
+                <p class="font-medium">基本计算</p>
+                <p class="text-sm text-gray-600">直接输入表达式，如 3+5*2，然后点击"计算"</p>
+              </div>
+            </div>
+            
+            <div class="flex items-start">
+              <div class="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-1 flex-shrink-0">
+                <i class="fa-solid fa-2"></i>
+              </div>
+              <div>
+                <p class="font-medium">求导运算</p>
+                <p class="text-sm text-gray-600">输入表达式如 x^3+2*x，选择"求导"，变量默认为 x</p>
+              </div>
+            </div>
+            
+            <div class="flex items-start">
+              <div class="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-1 flex-shrink-0">
+                <i class="fa-solid fa-3"></i>
+              </div>
+              <div>
+                <p class="font-medium">积分运算</p>
+                <p class="text-sm text-gray-600">选择"积分"，输入表达式如 x^2，设置上下限（如 0 和 3）</p>
+              </div>
+            </div>
+            
+            <div class="flex items-start">
+              <div class="bg-primary/10 text-primary rounded-full w-6 h-6 flex items-center justify-center mr-3 mt-1 flex-shrink-0">
+                <i class="fa-solid fa-4"></i>
+              </div>
+              <div>
+                <p class="font-medium">函数绘图</p>
+                <p class="text-sm text-gray-600">在右侧输入函数表达式，点击"绘制"按钮生成图像</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 快捷公式 -->
+        <div class="bg-white rounded-2xl shadow-xl overflow-hidden transform transition-all duration-300 hover:shadow-2xl animate-slide-up delay-300">
+          <div class="p-4 bg-accent text-white">
+            <h3 class="font-medium">常用公式</h3>
+          </div>
+          <div class="p-4 space-y-2">
+            <div class="grid grid-cols-2 gap-2">
+              <button class="calculator-btn bg-gray-50 hover:bg-gray-100 text-neutral py-2 text-sm" data-formula="sin(x)">
+                sin(x)
+              </button>
+              <button class="calculator-btn bg-gray-50 hover:bg-gray-100 text-neutral py-2 text-sm" data-formula="cos(x)">
+                cos(x)
+              </button>
+              <button class="calculator-btn bg-gray-50 hover:bg-gray-100 text-neutral py-2 text-sm" data-formula="tan(x)">
+                tan(x)
+              </button>
+              <button class="calculator-btn bg-gray-50 hover:bg-gray-100 text-neutral py-2 text-sm" data-formula="x^2">
+                x²
+              </button>
+              <button class="calculator-btn bg-gray-50 hover:bg-gray-100 text-neutral py-2 text-sm" data-formula="sqrt(x)">
+                √x
+              </button>
+              <button class="calculator-btn bg-gray-50 hover:bg-gray-100 text-neutral py-2 text-sm" data-formula="e^x">
+                e^x
+              </button>
+              <button class="calculator-btn bg-gray-50 hover:bg-gray-100 text-neutral py-2 text-sm" data-formula="ln(x)">
+                ln(x)
+              </button>
+              <button class="calculator-btn bg-gray-50 hover:bg-gray-100 text-neutral py-2 text-sm" data-formula="1/x">
+                1/x
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 页脚 -->
+    <footer class="mt-12 text-center text-gray-500 text-sm animate-fade-in">
+      <p>高级数学计算器 &copy; 2025 | 使用 <i class="fa-solid fa-heart text-red-500"></i> 制作</p>
+    </footer>
+  </div>
+
+  <script>
+    // 初始化图表
+    const ctx = document.getElementById('function-plot').getContext('2d');
+    let functionPlot = null;
+    
+    // 初始化图表函数
+    function initPlot() {
+      if (functionPlot) {
+        functionPlot.destroy();
+      }
+      
+      functionPlot = new Chart(ctx, {
+        type: 'line',
+        data: {
+          datasets: [{
+            label: '函数图像',
+            borderColor: '#165DFF',
+            backgroundColor: 'rgba(22, 93, 255, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              type: 'linear',
+              position: 'center',
+              title: {
+                display: true,
+                text: 'x'
+              }
+            },
+            y: {
+              type: 'linear',
+              position: 'center',
+              title: {
+                display: true,
+                text: 'f(x)'
+              }
+            }
+          },
+          plugins: {
+            tooltip: {
+              mode: 'index',
+              intersect: false
+            },
+            legend: {
+              display: false
+            }
+          }
+        }
+      });
+    }
+    
+    // 绘制函数图像
+    function plotFunction() {
+      const functionExpr = document.getElementById('function-to-plot').value.trim();
+      if (!functionExpr) {
+        alert('请输入函数表达式');
+        return;
+      }
+      
+      try {
+        // 生成数据点
+        const xValues = [];
+        const yValues = [];
+        
+        for (let x = -10; x <= 10; x += 0.1) {
+          xValues.push(x);
+          
+          // 使用mathjs计算函数值
+          const scope = { x };
+          const value = math.evaluate(functionExpr, scope);
+          yValues.push(value);
+        }
+        
+        // 更新图表数据
+        functionPlot.data.labels = xValues;
+        functionPlot.data.datasets[0].data = yValues;
+        functionPlot.update();
+        
+        // 添加到历史记录
+        addToHistory(`绘制函数: ${functionExpr}`);
+      } catch (error) {
+        document.getElementById('result').innerHTML = `<span class="text-red-500">错误: ${error.message}</span>`;
+      }
+    }
+    
+    // 添加到历史记录
+    function addToHistory(entry) {
+      const historyContainer = document.getElementById('calculation-history');
+      const historyEntry = document.createElement('div');
+      historyEntry.className = 'p-2 rounded bg-white border border-gray-100 shadow-sm animate-fade-in';
+      historyEntry.innerHTML = entry;
+      
+      // 插入到最前面
+      if (historyContainer.firstChild) {
+        historyContainer.insertBefore(historyEntry, historyContainer.firstChild);
+      } else {
+        historyContainer.appendChild(historyEntry);
+      }
+      
+      // 限制历史记录数量
+      const maxEntries = 10;
+      if (historyContainer.children.length > maxEntries) {
+        historyContainer.removeChild(historyContainer.lastChild);
+      }
+    }
+    
+    // 执行计算
+    function performCalculation() {
+      const expression = document.getElementById('expression').value.trim();
+      const variable = document.getElementById('variable').value.trim() || 'x';
+      const operation = document.getElementById('operation').value;
+      
+      if (!expression) {
+        document.getElementById('result').innerHTML = `<span class="text-red-500">请输入表达式</span>`;
+        return;
+      }
+      
+      try {
+        let result;
+        let displayResult;
+        let historyEntry;
+        
+        switch (operation) {
+          case 'calculate':
+            // 直接计算表达式
+            result = math.evaluate(expression);
+            displayResult = math.format(result, { precision: 10 });
+            historyEntry = `${expression} = ${displayResult}`;
+            break;
+            
+          case 'derivative':
+            // 求导
+            const derivative = math.derivative(expression, variable);
+            result = derivative.toString();
+            displayResult = result;
+            historyEntry = `d/d${variable} (${expression}) = ${displayResult}`;
+            break;
+            
+          case 'integral':
+            // 积分
+            const lowerBound = document.getElementById('lower-bound').value.trim();
+            const upperBound = document.getElementById('upper-bound').value.trim();
+            
+            if (!lowerBound || !upperBound) {
+              document.getElementById('result').innerHTML = `<span class="text-red-500">积分需要上下限</span>`;
+              return;
+            }
+            
+            // 计算定积分
+            const f = math.parse(expression).compile();
+            const dx = 0.001;
+            let sum = 0;
+            
+            const a = math.evaluate(lowerBound);
+            const b = math.evaluate(upperBound);
+            const n = Math.floor((b - a) / dx);
+            
+            for (let i = 0; i < n; i++) {
+              const x = a + i * dx;
+              sum += f.evaluate({ [variable]: x }) * dx;
+            }
+            
+            result = sum;
+            displayResult = math.format(result, { precision: 10 });
+            historyEntry = `∫[${lowerBound},${upperBound}] (${expression}) dx = ${displayResult}`;
+            break;
+            
+          case 'simplify':
+            // 简化表达式
+            result = math.simplify(expression).toString();
+            displayResult = result;
+            historyEntry = `简化 ${expression} → ${displayResult}`;
+            break;
+            
+          case 'factor':
+            // 因式分解
+            result = math.factor(expression).toString();
+            displayResult = result;
+            historyEntry = `因式分解 ${expression} → ${displayResult}`;
+            break;
+            
+          default:
+            document.getElementById('result').innerHTML = `<span class="text-red-500">不支持的运算类型</span>`;
+            return;
+        }
+        
+        // 显示结果
+        document.getElementById('result').innerHTML = `
+          <div class="font-medium">${displayResult}</div>
+          <div class="text-xs text-gray-500 mt-1">${historyEntry}</div>
+        `;
+        
+        // 添加到历史记录
+        addToHistory(historyEntry);
+        
+        // 如果是函数表达式，更新函数绘图输入
+        if (operation === 'calculate' || operation === 'derivative') {
+          document.getElementById('function-to-plot').value = expression;
+        }
+        
+      } catch (error) {
+        document.getElementById('result').innerHTML = `<span class="text-red-500">错误: ${error.message}</span>`;
+      }
+    }
+    
+    // 清除输入
+    function clearInput() {
+      document.getElementById('expression').value = '';
+      document.getElementById('result').innerHTML = '<span class="text-gray-400">计算结果将显示在这里...</span>';
+    }
+    
+    // 初始化
+    document.addEventListener('DOMContentLoaded', () => {
+      // 初始化图表
+      initPlot();
+      
+      // 监听运算类型变化，显示/隐藏额外参数
+      document.getElementById('operation').addEventListener('change', (e) => {
+        const additionalParams = document.getElementById('additional-params');
+        if (e.target.value === 'integral') {
+          additionalParams.classList.remove('hidden');
+        } else {
+          additionalParams.classList.add('hidden');
+        }
+      });
+      
+      // 绑定计算按钮
+      document.getElementById('calculate-btn').addEventListener('click', performCalculation);
+      
+      // 绑定清除按钮
+      document.getElementById('clear-btn').addEventListener('click', clearInput);
+      
+      // 绑定绘制按钮
+      document.getElementById('plot-btn').addEventListener('click', plotFunction);
+      
+      // 绑定数字和运算符按钮
+      document.querySelectorAll('[data-value]').forEach(button => {
+        button.addEventListener('click', () => {
+          const value = button.getAttribute('data-value');
+          const insert = button.getAttribute('data-insert') === 'true';
+          const input = document.getElementById('expression');
+          const cursorPos = input.selectionStart;
+          const currentValue = input.value;
+          
+          if (value === 'C') {
+            clearInput();
+          } else if (value === 'del') {
+            // 删除前一个字符
+            input.value = currentValue.substring(0, cursorPos - 1) + currentValue.substring(cursorPos);
+            input.focus();
+            input.setSelectionRange(cursorPos - 1, cursorPos - 1);
+          } else {
+            // 插入或追加值
+            if (insert) {
+              // 在光标位置插入
+              input.value = currentValue.substring(0, cursorPos) + value + currentValue.substring(cursorPos);
+              input.focus();
+              input.setSelectionRange(cursorPos + value.length, cursorPos + value.length);
+            } else {
+              input.value += value;
+              input.focus();
+              input.setSelectionRange(input.value.length, input.value.length);
+            }
+          }
+        });
+      });
+      
+      // 绑定常用公式按钮
+      document.querySelectorAll('[data-formula]').forEach(button => {
+        button.addEventListener('click', () => {
+          const formula = button.getAttribute('data-formula');
+          document.getElementById('expression').value = formula;
+        });
+      });
+      
+      // 支持Enter键计算
+      document.getElementById('expression').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          performCalculation();
+        }
+      });
+      
+      // 初始绘制默认函数
+      plotFunction();
+    });
+  </script>
+</body>
+</html>
+    
